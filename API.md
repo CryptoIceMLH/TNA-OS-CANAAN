@@ -1,6 +1,6 @@
 # TNA-OS (Canaan Edition) — HTTP API Reference
 
-**Firmware:** v0.3.5 · **Updated:** 2026-07-18 · **Applies to:** Avalon Nano 3s + Avalon Q
+**Firmware:** v0.3.15 · **Updated:** 2026-07-19 · **Applies to:** Avalon Nano 3s + Avalon Q
 
 REST/JSON API for **every Canaan board running TNA-OS-CANAAN**. This is the integration
 contract for building monitoring dashboards, control panels, fleet managers, and automation
@@ -121,7 +121,7 @@ Returns one large JSON object. The fields apps typically use:
 #### Identity
 | Field | Type | Example | Notes |
 |---|---|---|---|
-| `version` | string | `"0.3.5"` | TNA-OS firmware version |
+| `version` | string | `"0.3.15"` | TNA-OS firmware version |
 | `ASICModel` | string | `"A3197S"` | Always A3197S on the Nano 3s |
 | `deviceModel` | string | `"Avalon Nano 3s"` | |
 | `asicCount` | int | `12` | Chips on the single board |

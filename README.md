@@ -110,7 +110,7 @@ Flash your miner straight from your browser — no command line needed:
 **👉 [TNA Flasher — lnbits.molonlabe.holdings/tnaflasher/public](https://lnbits.molonlabe.holdings/tnaflasher/public)**
 
 First, grab your self a USB A male cable (other end depends on you pc)
-On Windows, the browser can only claim the miner if the WinUSB driver is bound to 29F1:0230. If the Flash step can't find the device: install <a href="https://zadig.akeo.ie/" target="_blank">Zadig</a>, select the 29F1:0230 device, choose WinUSB, and click Replace/Install Driver — once. macOS and Linux need no driver step.
+On Windows, the browser can only claim the miner if the WinUSB driver is bound to 29F1:0230. If the Flash step can't find the device: install <a href="https://zadig.akeo.ie/" target="_blank">Zadig</a>, select the 29F1:0230 device, choose WinUSB, and click Replace/Install Driver — reboot. macOS and Linux need no driver step.
 
 Then put the miner into flashing (BOOT) mode:
 1. Power the miner **off**.

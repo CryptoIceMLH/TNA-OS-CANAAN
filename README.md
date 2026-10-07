@@ -2,7 +2,7 @@
 
 ### The firmware your Avalon was supposed to ship with.
 
-**Version 0.3.16** · Avalon Nano 3s · Avalon Q
+**Version 0.3.21** · Avalon Nano 3s · Avalon Q
 
 ---
 

@@ -492,7 +492,7 @@ independence, sovereign communications, and experimental technology.
 If you find TNA-OS useful and would like to support continued research and development, please
 consider supporting:
 
-**👉 [molonlabe.holdings/#funding](https://www.molonlabe.holdings/#funding)**
+**👉 [coffee](https://btcpay.molonlabe.holdings/apps/2whR5EJDeEbPmtkJn2iy12AF3b3y/pos)**
 
 Every sat helps. ⚡
 

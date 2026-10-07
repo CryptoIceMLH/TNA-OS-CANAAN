@@ -498,6 +498,6 @@ Every sat helps. ⚡
 
 ---
 
-**This build:** v0.3.16 — confirmed working on both the Avalon Nano 3s and the Avalon Q.
+**This build:** v0.3.21 — confirmed working on both the Avalon Nano 3s and the Avalon Q.
 
 **TNA-OS Canaan — your miner, your rules.**

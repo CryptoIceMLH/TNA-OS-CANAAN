@@ -2,7 +2,7 @@
 
 ### The firmware your Avalon was supposed to ship with.
 
-**Version 0.3.21** · Avalon Nano 3s · Avalon Q
+**Version 0.4.1** · Avalon Nano 3s · Avalon Q · Free, with a 2 % dev fee
 
 ---
 
@@ -31,14 +31,15 @@ One firmware. Both machines. Total control.
 ## This is what control feels like
 
 **160 hash chips. All the power in your hands.**
-The Avalon Q packs 160× A3197S — over **19,000 compute cores** of SHA-256 muscle. TNA-OS
+The Avalon Q packs 160× A3197S — over **24,000 compute cores** of SHA-256 muscle. TNA-OS
 gives you full control of the chain: global frequency, voltage and presets — plus
-**🧪 per-ASIC tuning** to walk a single chip to its own clock while the rest hold steady.
+**🧪 per-ASIC tuning** to walk a single chip to its own clock while the rest hold steady, and a
+**🧪 per-chip Autotuner** that does it for you.
 Balance a board. Nurse a weak die. Push a strong one. This is control stock firmware won't
 even show you.
 
-> 🧪 **Per-ASIC tuning — manual and auto-tune — is experimental.** Setting a chip's clock by
-> hand, and the auto-tuner that does it for you, are two halves of the same work-in-progress:
+> 🧪 **Per-ASIC tuning — manual and the Autotuner — is experimental.** Setting a chip's clock by
+> hand, and the Autotuner that does it for you, are two halves of the same work-in-progress:
 > the capability is live and genuinely powerful, but still being hardened build to build.
 > **Global frequency, voltage and presets are the rock-solid, everyday path**; treat per-chip
 > tuning (manual or auto) as the bleeding edge.
@@ -68,10 +69,11 @@ into reset before anything cooks. A hardware watchdog that resurrects a stuck bo
 own. A PID fan controller holding your target temperature to the degree. Immersion-cooling
 mode for the tank builds. It's engineered to run **unattended, for months, and not care.**
 
-**Bitcoin only — or it stops.**
-Point a pool at non-Bitcoin SHA-256 work and TNA-OS catches it, throttles to a safe idle
-clock, and lights up a warning on the screen and the dashboard. Checked *per pool*, so a
-decoy can't sneak past. Your hashpower mines what you told it to. Full stop.
+**Built for Bitcoin.**
+Point a pool at non-Bitcoin SHA-256 work and TNA-OS catches it straight from the chain's own
+network difficulty. Checked *per pool*, so a decoy can't sneak past. Your miner keeps running
+at full speed, but while a shitcoin pool is connected the dev fee is 4 % instead of 2 %, and a
+small 😢 on the screen and dashboard says why. Mine Bitcoin and you'll never see it.
 
 **Open to everything. Owned by you.**
 A clean REST/JSON API on the same address as the dashboard. A cgminer-compatible endpoint so
@@ -86,13 +88,50 @@ mining and reporting.
 | | **Avalon Nano 3s** | **Avalon Q** |
 |---|---|---|
 | Hash chips | 12× A3197S | 160× A3197S |
-| Compute cores | ~1,440 | ~19,200 |
-| Power | USB-C PD | Mains PSU (~4 kW class) |
+| Compute cores | 1,824 (152 per chip) | 24,320 (152 per chip) |
+| Power | USB-C PD (140 W limit) | Mains PSU (1750 W limit) |
 | Class | Quiet home unit | Full-size home miner |
 
 Same firmware. Same dashboard. Same API. Same controls. The Q and the 3s run **identical
 software from the same source** — the only things that differ are the numbers the hardware
 reports back. Learn one, you know both.
+
+---
+
+## Free, with a 2 % dev fee
+
+TNA-OS is free to install. In return, **2 % of mining goes to the TNA-OS developer**: the
+developer's pool takes part in the normal pool rotation with a 2 % quota, and your pools share
+the other 98 % by your own quotas. Nothing else changes: your pools, quotas, failover and settings
+work exactly as before, and idle time costs nothing.
+
+- **Always visible.** The Pools card on the dashboard shows "Dev fee 2 % → TNA-OS" with the
+  fee's live hashrate and share count, and the API reports the same (`devFeePct`,
+  `devFeeState`, `devFeeHashrate`, `devFeeShares`).
+- **Fixed.** The fee has no settings, cannot be changed or switched off, and is not one of
+  your 8 pool slots.
+- **Solo miners:** a block found during a dev-fee turn belongs to the developer's pool. That
+  is 2 % of your mining time, so 2 % of your block chances.
+- **Blocking it does not give the time back.** If the developer's pool cannot be reached, the
+  dev-fee turns still happen and that work is lost, and the dashboard says
+  **"Dev Fee blocked. You are cheap!"**
+- **4 % while mining a shitcoin.** TNA-OS is Bitcoin firmware. If any connected pool serves
+  work that is not Bitcoin mainnet (see the shitcoin detector below), the dev fee is **4 %**
+  of the whole machine instead of 2 %, for as long as that pool is connected. The miner is
+  not throttled. The dashboard shows "Dev fee 4 % (shitcoin detected)" and `devFeePct`
+  reports `4`. It drops back to 2 % as soon as no connected pool serves non-Bitcoin work.
+
+### Shitcoin detector
+
+Every pool job carries `nbits`, the network difficulty of the chain being mined. It sits inside
+the hashed block header, so a pool cannot fake it without its own blocks being rejected.
+Bitcoin's network difficulty is far above every other SHA-256 chain (BCH, BSV, alts, testnet,
+signet). TNA-OS flags a pool once it sends **10 jobs in a row below 100 T** network
+difficulty; one Bitcoin-grade job clears the flag. Each pool is checked on its own, so a
+small-quota Bitcoin pool cannot hide a shitcoin pool. While a flagged pool is connected:
+- the dev fee is 4 % instead of 2 % (above),
+- the dashboard shows a small "😢 Shitcoin detected · dev fee 4 %" line above the hashrate
+  chart, and the OLED shows a shitcoin frame once per page rotation.
 
 ---
 
@@ -110,7 +149,7 @@ Flash your miner straight from your browser — no command line needed:
 **👉 [TNA Flasher — lnbits.molonlabe.holdings/tnaflasher/public](https://lnbits.molonlabe.holdings/tnaflasher/public)**
 
 First, grab your self a USB A male cable (other end depends on you pc)
-On Windows, the browser can only claim the miner if the WinUSB driver is bound to 29F1:0230. If the Flash step can't find the device: install <a href="https://zadig.akeo.ie/" target="_blank">Zadig</a>, select the 29F1:0230 device, choose WinUSB, and click Replace/Install Driver — reboot. macOS and Linux need no driver step.
+On Windows, the browser can only claim the miner if the WinUSB driver is bound to 29F1:0230. If the Flash step can't find the device: install <a href="https://zadig.akeo.ie/" target="_blank">Zadig</a>, select the 29F1:0230 device, choose WinUSB, and click Replace/Install Driver — once. macOS and Linux need no driver step.
 
 Then put the miner into flashing (BOOT) mode:
 1. Power the miner **off**.
@@ -172,13 +211,18 @@ Live gauges, updated every second.
 **BDOC** and **IMMERSION** badges light up when those modes are active.
 
 ### Pools
-A status badge per pool — connected / disconnected / dead — with its quota %.
+A status badge per pool — connected / disconnected / dead — with its quota %. Under the badges a
+small line shows the dev fee: **"Dev fee 2 % → TNA-OS"** with its live hashrate and share count
+(4 % and "(shitcoin detected)" while a pool serves non-Bitcoin work). If the dev pool can't be
+reached, a red **"Dev Fee blocked. You are cheap!"** banner appears at the top of the dashboard.
 
 ### Shares
 **Accepted / Sent / Rejected** since the daemon started, plus a per-pool breakdown. 
 
 ### Best Difficulty
-The highest-difficulty share this miner has ever found ("since boot"). If it ever equals the current Bitcoin network difficulty, **you've found a block.**
+The highest-difficulty share this miner has found — **all-time** (kept across reboots) and **since
+boot**, plus a per-pool breakdown in multipool. If it ever reaches the current Bitcoin network
+difficulty, **you've found a block.**
 
 ### Bitcoin Network
 Live network stats — block height, difficulty, estimated network hashrate — from a public
@@ -188,7 +232,8 @@ BTC views.
 ### Hash Rate Chart
 Your hashrate over time with selectable **1m / 10m / 1h / 1d** traces plus **temperature** and
 **fan** overlays (click the coloured legend dots to toggle each). If a pool ever serves
-non-Bitcoin work, this card takes over with a **SHITCOIN DETECTED** notice — the miner throttles to 100 MHz until you point it back at a Bitcoin pool.
+non-Bitcoin work, a small **😢 Shitcoin detected · dev fee 4 %** line appears above the chart
+(see [Shitcoin detector](#shitcoin-detector)).
 
 ### Hardware Schematic
 The per-board and per-chip view — and the hashboard **Power ON / OFF** buttons. Covered next.
@@ -200,8 +245,11 @@ The per-board and per-chip view — and the hashboard **Power ON / OFF** buttons
 Each hashboard is drawn as a grid of chips.
 
 - **Chip display dropdown** (per board): choose what every chip cell shows — **Health**,
-  **Hashrate**, **Temp °C**, **Freq MHz**, or **Chip ID**. Click a single chip to override just
-  that one.
+  **Hashrate**, **Temp °C**, **Freq MHz**, **Fail %** (Smart Speed self-check fail rate),
+  **HW errors**, or **Chip ID**.
+- **Click any chip** for its full diagnostics: clocks and how its cores are split across them,
+  Smart Speed fail rate, proven hashrate, valid / hardware-error / stale / duplicate nonces, SHA
+  engines and UART link health. **Reset counters** zeroes the per-chip counts.
 - **Per-board controls:**
   - **↻ Reset** — a 200 ms reset pulse to that board; chips re-init and mining restarts (asks to
     confirm first).
@@ -214,13 +262,15 @@ Each hashboard is drawn as a grid of chips.
   responding. Each board also shows its state (ACTIVE / DISABLED / RE-INIT / OVERHEAT / FAILED /
   EMPTY) and thermal zone (WARN / HOT / DANGER).
 
-### 🧪 Per-chip frequency editor — WIP, don't use
-The schematic has a **⚙ Per-chip freq** button that the UI itself tags **"WIP — Don't use."** It
-opens a grid where each chip can be set to **Global** or a fixed **100–600 MHz** (0 = follow the
-global frequency; re-clocks slew at 9 MHz/s), with Apply / Cancel / **Reset to global**. It's
-locked while Auto-Tune is running. **Per-chip clocking is not yet validated on hardware — only
-the global frequency is proven.** Treat it as experimental; use the global frequency for real
-mining.
+### 🧪 Per-chip frequency editor — beta
+The schematic has a **⚙ Per-chip freq** button (tagged **BETA**). It opens a grid where each chip
+can be set to **Global** or a fixed **100–600 MHz**, with Apply / Cancel / **Reset to global**. Pinned
+chips slew to their new clock gradually. It's locked while the Autotuner is on (the Autotuner sets
+every chip itself).
+
+**Smart Speed.** Each A3197S runs its 152 cores across 4 clock levels and moves cores between them on
+its own, based on a built-in self-check. The chip's Freq is its top clock; the diagnostics show how
+many cores sit on each level and the fail rate that drives it.
 
 ---
 
@@ -240,7 +290,7 @@ numbers and reveals the Difficulty card; Pro unlocks BDOC (below).
   more power. In Safe mode you pick from the chip's factory profile (unsafe values show in red);
   in Advanced you can type any value.
 - **Voltage** — labelled **Core Voltage (mV)** on the Nano 3s, **String Voltage (V)** on the
-  Avalon Q (21.5–26.0 V across the 10-chip series string). **It must match the factory profile
+  Avalon Q (21.5–26.0 V across each 16-chip series string; the Q has 10 strings). **It must match the factory profile
   for your chosen frequency** — too low starves the chips, too high can damage them. Only change
   it if you know the V/F table.
 - **Custom presets** — save the current frequency + voltage pair under a name and recall it in
@@ -281,6 +331,13 @@ down to a minimum of 2). Each pool has:
 
 Extras: **Enable Extranonce Subscribe** (V1 pools push fresh work without reconnecting) and
 **Stratum TCP Keepalive** (heartbeat for pools that drop idle clients — safe to leave on).
+
+**How pools take turns.** One pool mines the whole machine at a time, for 30 seconds, then the
+next pool is picked by quota. Over time each pool gets exactly its share, but a pool with a small
+quota gets turns less often: a 2 % pool gets one 30 s turn about every 25 minutes. Shares found
+during a turn always go to the pool that sent that work, so switching costs nothing. The dev fee
+takes part in this same rotation (see [Free, with a 2 % dev fee](#free-with-a-2--dev-fee)): its
+first turn comes about 12–13 minutes after your pool connects, then about every 25 minutes.
 
 **What happens when a pool goes down.** In **multipool**, that pool's quota is **redistributed to
 the survivors** automatically — the per-pool card shows the *effective* quota next to your
@@ -365,17 +422,49 @@ Difficulty** (default 10000). Leave these alone unless you know why you're chang
 
 ---
 
-## 🧪 Per-ASIC tuning & Auto-Tune (experimental)
+## 🧪 Autotuner (WIP)
 
-Two surfaces, both flagged **WIP — Don't use** in the UI itself:
-- The **per-chip frequency editor** on the schematic (above).
-- The **Auto-Tune** card on Settings — *"Auto-Tune (per-chip frequency + voltage)"* — with goals
-  **Hold Temperature**, **Hold Power**, **Max Hashrate** and **Max Efficiency**. It drives per-chip
-  frequency and Vcore, locks manual tuning while active, and only runs in the Normal thermal zone
-  (it never overrides the safety ladder).
+The Autotuner finds the best clock for **every chip separately**, and keeps tuning while the miner
+runs; it doesn't calibrate once and stop. Turn it on in the **Autotuner** card on Settings. Every
+field there has its own help text, plus "How it works" and "What protects the miner" sections.
 
-Per-chip clocking isn't validated on hardware yet, so both are experimental on purpose — **use the
-global frequency/voltage for real mining** and leave Auto-Tune disabled for now.
+**Goals**
+- **Max hashrate** — the most hashrate within your power limit.
+- **Efficiency** — the best hashrate per watt (needs a working power reading).
+- **Heater** — holds the hottest chip near your **Heater target** (°C).
+- **Overclock** — like Max hashrate, but keeps even small gains.
+
+**Limits**
+- **Max power (W)** — 0 means the board's own limit: Nano 3s 140 W (USB-C), Avalon Q 1750 W. A
+  value you set is capped at that limit. (Nano 3s in PSU Bypass: only your value applies.)
+- **Max voltage** — the highest voltage the tuner may use; 0 means the board's maximum.
+
+**How it works**
+1. Every chip starts at your global frequency (or its saved tuned clock) and moves in **10 MHz
+   steps**, all chips together in rounds. A chip that starts past its limit searches down first.
+2. Each step is judged on the chip's own **Smart Speed** readings: how many cores run at which clock,
+   and how many fail the self-check. A chip keeps a step only if its output really improved, and
+   holds at its best clock once it stops improving.
+3. Holding chips are still watched: a chip whose output drops steps down 10 MHz, and a chip that has
+   been healthy for 30 minutes tries one step up.
+4. Once every chip holds, it tries **voltage**, one step at a time and only kept if it pays off:
+   down for Efficiency, up for Max hashrate / Overclock (only below 95 % of the power limit), toward
+   the target for Heater. Every voltage change restarts the chip search.
+5. Clocks and voltage are saved every 10 minutes and reused after a restart.
+
+**What protects the miner**
+- **Temperature stays with the fans and the thermal ladder.** The tuner follows it: in **Warn** the
+  hottest chip steps down every 15 s; in **Hot** every chip does. It climbs again once the board is
+  back to Normal.
+- **Over the power limit:** every chip steps down every 15 s and the voltage one step every 30 s,
+  and they stay capped at the cut point. It resumes below 97 % of the limit. While the tuner is on,
+  it alone controls power (the Nano 3s 140 W cap loop stands down).
+- No power reading: power-based steps hold, and the card says so.
+
+**Watching it.** The hashboard card shows how many chips are climbing / holding / stepped down, the
+voltage phase and the last thing the tuner did. Each chip's box animates while it climbs, glows
+while it holds and gets an amber ring when stepped down. Smart Speed readings are slow (minutes per
+step on the Avalon Q), so give it time.
 
 ---
 
@@ -424,9 +513,6 @@ Great for custom dashboards, fleet tools, and **Home Assistant** (a REST sensor 
 lines of YAML). There's also a **cgminer-compatible** endpoint so existing miner-monitoring
 software works with little or no change.
 
-Full reference — every field, every endpoint, ready-to-paste recipes — is in the
-**[API reference](https://github.com/CryptoIceMLH/TNA-OS-CANAAN/blob/main/API.md)**.
-
 ---
 
 ## Security — read this
@@ -452,7 +538,7 @@ Your pool credentials live on the miner and are **never** returned by the API or
 | No WiFi yet | Join the `TNA-Setup` network and provision it (see Getting Started). |
 | Low hashrate right after Power ON | Normal — give it a few seconds; voltage and frequency ramp up from a safe floor. |
 | Shares getting rejected | Usually a pool account / worker-name issue — double-check your worker with the pool. |
-| Miner throttled with a warning | A pool may be serving non-Bitcoin work (shitcoin protection). Check your pool URLs. |
+| Dev fee shows 4 % / "Shitcoin detected" | A connected pool is serving non-Bitcoin work. Point it at a Bitcoin pool and the fee returns to 2 %. |
 | Running hot | Fans go to 100% automatically; check airflow and ambient temp. Danger temp holds the board in reset until it cools. |
 
 ---
@@ -462,8 +548,9 @@ Your pool credentials live on the miner and are **never** returned by the API or
 TNA-OS Canaan is under active development. Everything in the feature list above is **shipping
 and working today, except the items tagged 🧪**. Here's what's still cooking:
 
-- **🧪 Per-ASIC tuning (manual + auto-tune)** — live now, but experimental; the manual per-chip
-  editor and the auto-tuner that drives it are being hardened build to build.
+- **🧪 Per-ASIC tuning (manual + Autotuner)** — live now, but experimental; the manual per-chip
+  editor and the Autotuner are being hardened build to build. The Autotuner has been tested on
+  both the Nano 3s and the Avalon Q.
 - **🧪 Solar integration** — mine straight from your solar/battery setup, with PV, battery and
   charger telemetry built into the dashboard. The plumbing is in; still experimental.
 - **🧪 Heat capture** — put your miner's waste heat to work (space and water heating). Early
@@ -480,7 +567,6 @@ experimental until they lose the flask.
 - **⚡ Flash your miner:** [TNA Flasher](https://lnbits.molonlabe.holdings/tnaflasher/public)
 - **📊 Engineering report — Avalon Nano 3s (A3197S ASIC):** [github.com/CryptoIceMLH/Nano3S](https://github.com/CryptoIceMLH/Nano3S)
 - **📊 Engineering report — Avalon Q:** [github.com/CryptoIceMLH/AvalonQ](https://github.com/CryptoIceMLH/AvalonQ)
-- **🔌 API reference:** [API.md](https://github.com/CryptoIceMLH/TNA-OS-CANAAN/blob/main/API.md)
 
 ---
 
@@ -492,12 +578,12 @@ independence, sovereign communications, and experimental technology.
 If you find TNA-OS useful and would like to support continued research and development, please
 consider supporting:
 
-**👉 [coffee](https://btcpay.molonlabe.holdings/apps/2whR5EJDeEbPmtkJn2iy12AF3b3y/pos)**
+**👉 [molonlabe.holdings/#funding](https://www.molonlabe.holdings/#funding)**
 
 Every sat helps. ⚡
 
 ---
 
-**This build:** v0.3.21 — confirmed working on both the Avalon Nano 3s and the Avalon Q.
+**This build:** v0.4.1 — free, with a 2 % dev fee (4 % while a pool serves non-Bitcoin work).
 
 **TNA-OS Canaan — your miner, your rules.**

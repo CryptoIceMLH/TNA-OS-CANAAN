@@ -1,6 +1,6 @@
 # TNA-OS (Canaan Edition) — HTTP API Reference
 
-**Firmware:** v0.4.1 · **Updated:** 2026-10-17 · **Applies to:** Avalon Nano 3s + Avalon Q
+**Firmware:** v0.4.2 · **Updated:** 2026-10-19 · **Applies to:** Avalon Nano 3s + Avalon Q
 
 REST/JSON API for **every Canaan board running TNA-OS-CANAAN**. This is the integration
 contract for building monitoring dashboards, control panels, fleet managers, and automation

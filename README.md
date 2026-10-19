@@ -2,7 +2,7 @@
 
 ### The firmware your Avalon was supposed to ship with.
 
-**Version 0.4.1** · Avalon Nano 3s · Avalon Q · Free, with a 2 % dev fee
+**Version 0.4.2** · Avalon Nano 3s · Avalon Q · Free, with a 2 % dev fee
 
 ---
 
@@ -584,6 +584,6 @@ Every sat helps. ⚡
 
 ---
 
-**This build:** v0.4.1 — free, with a 2 % dev fee (4 % while a pool serves non-Bitcoin work).
+**This build:** v0.4.2 — free, with a 2 % dev fee (4 % while a pool serves non-Bitcoin work).
 
 **TNA-OS Canaan — your miner, your rules.**

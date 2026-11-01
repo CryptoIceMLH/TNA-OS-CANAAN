@@ -2,7 +2,7 @@
 
 ### The firmware your Avalon was supposed to ship with.
 
-**Version 0.4.2** · Avalon Nano 3s · Avalon Q · Free, with a 2 % dev fee
+**Version 0.4.7** · Avalon Nano 3s · Avalon Q · Free, with a 2 % dev fee
 
 ---
 
@@ -89,7 +89,7 @@ mining and reporting.
 |---|---|---|
 | Hash chips | 12× A3197S | 160× A3197S |
 | Compute cores | 1,824 (152 per chip) | 24,320 (152 per chip) |
-| Power | USB-C PD (140 W limit) | Mains PSU (1750 W limit) |
+| Power | USB-C PD (140 W limit, settable up to 200 W) | Mains PSU (1750 W limit) |
 | Class | Quiet home unit | Full-size home miner |
 
 Same firmware. Same dashboard. Same API. Same controls. The Q and the 3s run **identical
@@ -112,8 +112,14 @@ work exactly as before, and idle time costs nothing.
   your 8 pool slots.
 - **Solo miners:** a block found during a dev-fee turn belongs to the developer's pool. That
   is 2 % of your mining time, so 2 % of your block chances.
-- **Blocking it does not give the time back.** If the developer's pool cannot be reached, the
-  dev-fee turns still happen and that work is lost, and the dashboard says
+- **One anonymous worker per miner.** Each miner shows on the developer's pool as its own
+  worker (`devfee` + `q`/`3s` + a random 6-character ID). The ID is made once from random data
+  (nothing from your hardware, network or wallet) and is kept across firmware updates, so the
+  developer can see how many miners run TNA-OS and nothing about who owns them.
+- **Backup pool.** If the developer's main pool (ViaBTC) can't be reached, the fee switches to a
+  backup pool (Braiins) and goes back to the main pool once it is reachable again.
+- **Blocking it does not give the time back.** If neither of the developer's pools can be
+  reached, the dev-fee turns still happen and that work is lost, and the dashboard says
   **"Dev Fee blocked. You are cheap!"**
 - **4 % while mining a shitcoin.** TNA-OS is Bitcoin firmware. If any connected pool serves
   work that is not Bitcoin mainnet (see the shitcoin detector below), the dev fee is **4 %**
@@ -172,10 +178,14 @@ Then put the miner into flashing (BOOT) mode:
   screen.
 - Open **`http://<miner-ip>/`** in any browser. That's your dashboard.
 
-### 3 · Get it online (WiFi)
+### 3 · Get it online (WiFi or wired)
 
-Skip this if you're on wired ethernet. Otherwise, a fresh miner broadcasts its own setup
-network:
+**Wired:** the Avalon Q has a network port. The Nano 3s can use a **TP-Link UE306** USB Ethernet
+adapter (ASIX AX88179) in its USB port instead of the WiFi dongle. Plug in the cable and the
+miner gets its address from your router, also on a fresh install, with no setup network. Skip the
+rest of this step.
+
+**WiFi:** a fresh miner with a WiFi dongle broadcasts its own setup network:
 1. Connect your phone or laptop to the **`TNA-Setup`** WiFi network.
 2. A pop up should open on mobile devices, For pc open  `http://192.168.4.1/`.
 3. Enter your home WiFi name and password.
@@ -200,15 +210,23 @@ about every 1–3 seconds.
 Each card is a tile you can move or resize. Here's what every one shows.
 
 ### Hash Rate
-The headline number is the **1-minute rolling average** in TH/s (derived from accepted-share
-difficulty). 1 m reacts fast but is noisy; the **10-minute** figure is the smoother trend — use
-it for a stable read. **Expected** is the theoretical rating at your current frequency
-(chip rating × MHz) — a reference, not a chip reading; a healthy miner usually beats it.
+The headline number is the **1-minute rolling average** in TH/s. It counts every result the
+chips return at their report difficulty, which is set as stock does it: the pool difficulty, capped at 4096.
+On the Nano 3s that is roughly one result every 3 seconds, so the 1-minute figure moves around (like
+stock's); the **10-minute** and **1-hour** figures are the steady ones. **Expected** is the chips' own
+self-check rate, calculated exactly the way the stock firmware calculates the hashrate it displays (each
+chip's Smart Speed pass count × 0.256). It updates about every 2 minutes and stays blank until the first
+measurement after power-on.
 
 ### Miner Status
 Live gauges, updated every second.
 
 **BDOC** and **IMMERSION** badges light up when those modes are active.
+
+The small **download icon** in the card header saves your tune as a `.txt` file to share: frequency,
+voltage, per-chip pins, BDOC, power source (Nano 3s: PSU bypass with its voltage, or USB-C with your
+USB power limit), fans, thermal thresholds, immersion and autotuner settings, plus the 1-minute,
+10-minute and 1-hour hashrate, power and efficiency at the moment you saved it.
 
 ### Pools
 A status badge per pool — connected / disconnected / dead — with its quota %. Under the badges a
@@ -244,6 +262,12 @@ The per-board and per-chip view — and the hashboard **Power ON / OFF** buttons
 
 Each hashboard is drawn as a grid of chips.
 
+- **Power card** (left column), with **Power ON / Power OFF** buttons on both machines (each asks
+  to confirm):
+  - **Avalon Q:** PSU card: output voltage and watts, efficiency in **J/TH**, standby state.
+  - **Nano 3s:** measured power and efficiency in **J/TH** (lower is better), plus GH/W. In PSU
+    bypass the title shows **POWER • BYPASS** and the bypass voltage; on USB-C it shows the PD
+    contract (volts, amps) and your USB power limit.
 - **Chip display dropdown** (per board): choose what every chip cell shows — **Health**,
   **Hashrate**, **Temp °C**, **Freq MHz**, **Fail %** (Smart Speed self-check fail rate),
   **HW errors**, or **Chip ID**.
@@ -264,7 +288,7 @@ Each hashboard is drawn as a grid of chips.
 
 ### 🧪 Per-chip frequency editor — beta
 The schematic has a **⚙ Per-chip freq** button (tagged **BETA**). It opens a grid where each chip
-can be set to **Global** or a fixed **100–600 MHz**, with Apply / Cancel / **Reset to global**. Pinned
+can be set to **Global** or a fixed **100–600 MHz** (up to 1200 MHz in BDOC), with Apply / Cancel / **Reset to global**. Pinned
 chips slew to their new clock gradually. It's locked while the Autotuner is on (the Autotuner sets
 every chip itself).
 
@@ -296,12 +320,17 @@ numbers and reveals the Difficulty card; Pro unlocks BDOC (below).
 - **Custom presets** — save the current frequency + voltage pair under a name and recall it in
   one click later. Pick a preset to load it into the form, then **Save** to apply; **Delete**
   removes it.
-- **PSU Mode (Nano 3s only)** — **USB-C PD** (power capped at 140 W) or **Bypass** (you feed your
-  own DC supply and enter its inject voltage, 26–30 V — used for the power estimate only).
+- **PSU Mode (Nano 3s only)** — **USB-C PD** or **Bypass** (you feed your own DC supply and enter
+  its inject voltage, 26–30 V — used for the power estimate only). In USB-C PD mode, **USB PSU
+  limit** sets the power cap: default 140 W, up to 200 W for a USB-C charger rated higher (e.g. a
+  180 W laptop charger). If the charger can't deliver what you set, it will cut out.
 
 ### 🔥 BDOC — expert overclocking (Pro level)
-**BDOC (Balls-Deep Overclocking)** removes *all* frequency and voltage safety clamps for full
-manual control. It's gated behind three escalating confirmations (the last one literally
+**BDOC (Balls-Deep Overclocking)** raises the frequency and voltage limits for full manual
+control: frequency up to **1200 MHz** (normal 600), Nano 3s core voltage up to **4500 mV** (normal
+3900) with no USB power cap, Avalon Q string voltage up to **27.0 V** (normal 26.0) with an
+**1850 W** PSU limit (normal 1750 W). Turning BDOC off brings everything back inside the normal
+limits. It's gated behind three escalating confirmations (the last one literally
 "FUCK AROUND AND FIND OUT"), because **wrong values can instantly destroy chips or brick the
 board.** With BDOC on, the normal Warn/Hot/Danger ladder is disabled and a single **BDOC
 overheat temp** (40–120 °C) is the only reset trigger. Experts only, entirely at your own risk.
@@ -345,6 +374,12 @@ the survivors** automatically — the per-pool card shows the *effective* quota 
 returns to the primary when it recovers. A dead pool shows a grace-period alert, then
 "not connected".
 
+**When every pool is down (energy save).** If none of your pools has been reachable for 2 minutes
+(for example the internet or WiFi dropped), the miner drops every chip to the board's lowest
+frequency so it stops burning full power on work nobody can receive. The hashboard stays powered
+and the pools keep retrying; the moment one connects again, your frequency, per-chip settings and
+the autotuner come straight back. Nothing restarts, so there is no re-initialisation of the chips.
+
 > A worker the pool doesn't recognise shows up as rejects — that's an account / worker-name issue
 > with the pool, not the miner.
 
@@ -354,7 +389,9 @@ returns to the primary when it recovers. A dead pool shows a grace-period alert,
 
 **Fan Controller** runs in one of two modes:
 
-- **Manual** — two duty sliders (0–100%). On the Q they're **Front Fans (1-2)** and **Back Fans
+- **Manual** — two duty sliders (0–100%). Your setting is applied as soon as the hashboard
+  powers on and held there while mining; only the thermal ladder overrides it (Warn and above),
+  and it comes back as soon as the board is back to Normal. On the Q they're **Front Fans (1-2)** and **Back Fans
   (3-4)**; in immersion mode they become **Pump** and **Radiator**. Below **40%** you get a
   ⚠ *Danger* badge (usually too little airflow for normal mining); at **100%** a *MAX* badge
   (no headroom left for the thermal ladder to push harder).
@@ -425,7 +462,9 @@ Difficulty** (default 10000). Leave these alone unless you know why you're chang
 ## 🧪 Autotuner (WIP)
 
 The Autotuner finds the best clock for **every chip separately**, and keeps tuning while the miner
-runs; it doesn't calibrate once and stop. Turn it on in the **Autotuner** card on Settings. Every
+runs; it doesn't calibrate once and stop. Turn it on in the **Autotuner** card on Settings.
+While it is a work in progress it is **locked**: enter the unlock code next to the switch first.
+The lock comes back after every reboot, and the tuner is always off after a reboot. Every
 field there has its own help text, plus "How it works" and "What protects the miner" sections.
 
 **Goals**
@@ -435,30 +474,41 @@ field there has its own help text, plus "How it works" and "What protects the mi
 - **Overclock** — like Max hashrate, but keeps even small gains.
 
 **Limits**
-- **Max power (W)** — 0 means the board's own limit: Nano 3s 140 W (USB-C), Avalon Q 1750 W. A
-  value you set is capped at that limit. (Nano 3s in PSU Bypass: only your value applies.)
+- **Max power (W)** — the tuner uses all of it. 0 means the board's own limit: Nano 3s your USB PSU
+  limit (default 140 W), Avalon Q 1750 W. A value you set is capped at that limit, except in **BDOC**,
+  where a higher value is allowed (Avalon Q up to its BDOC PSU limit of 1850 W). Nano 3s in PSU
+  Bypass: only your value applies.
 - **Max voltage** — the highest voltage the tuner may use; 0 means the board's maximum.
+- **Ladder shaping** — experimental, off by default (see step 6).
 
 **How it works**
-1. Every chip starts at your global frequency (or its saved tuned clock) and moves in **10 MHz
-   steps**, all chips together in rounds. A chip that starts past its limit searches down first.
-2. Each step is judged on the chip's own **Smart Speed** readings: how many cores run at which clock,
-   and how many fail the self-check. A chip keeps a step only if its output really improved, and
-   holds at its best clock once it stops improving.
-3. Holding chips are still watched: a chip whose output drops steps down 10 MHz, and a chip that has
-   been healthy for 30 minutes tries one step up.
-4. Once every chip holds, it tries **voltage**, one step at a time and only kept if it pays off:
-   down for Efficiency, up for Max hashrate / Overclock (only below 95 % of the power limit), toward
-   the target for Heater. Every voltage change restarts the chip search.
-5. Clocks and voltage are saved every 10 minutes and reused after a restart.
+1. Every chip starts at your global frequency (or the learned tune, step 5) and moves in **10 MHz
+   steps**, each chip on its own. A chip that starts past its limit searches down first.
+2. Each step is judged on the chip's own **Smart Speed** readings, which the chip updates every few
+   seconds: how many of its cores run on each of its 4 clocks (the chip moves a core down when it
+   makes errors) and how many fail the self-check. After a step the tuner waits 30 s (Avalon Q: 60 s)
+   for the chip to react. A chip keeps a step only if its output really improved and its failures
+   stay under 5 %, and holds at its best clock once it stops improving.
+3. Holding chips are still watched: a chip whose output drops two checks in a row steps down 10 MHz,
+   and a chip that has held for 5 minutes with almost no failures tries one step up.
+4. Once every chip holds, it **searches the voltage**: it measures your goal at a few voltages within
+   6 steps of your setting and narrows in on the best (golden-section search, about 5 measurements),
+   toward the target for Heater. Every measurement lets the chips find their speed again first.
+5. When the search finishes, every chip's clock and the voltage are **saved as the learned tune**.
+   The next time the tuner starts with the same frequency and goal, it starts from that tune instead
+   of searching from scratch. Turning the tuner off puts your own frequency, per-chip and voltage
+   settings back.
+6. **Ladder shaping (optional):** a chip whose cores almost all sit on its top clock with no
+   failures gets that top clock raised 5 MHz at a time (up to +20 MHz), and lowered again if cores
+   start dropping off it.
 
 **What protects the miner**
 - **Temperature stays with the fans and the thermal ladder.** The tuner follows it: in **Warn** the
-  hottest chip steps down every 15 s; in **Hot** every chip does. It climbs again once the board is
+  hottest chip steps down every 5 s; in **Hot** every chip does. It climbs again once the board is
   back to Normal.
-- **Over the power limit:** every chip steps down every 15 s and the voltage one step every 30 s,
-  and they stay capped at the cut point. It resumes below 97 % of the limit. While the tuner is on,
-  it alone controls power (the Nano 3s 140 W cap loop stands down).
+- **Over the power limit:** every chip steps down every 5 s and the voltage one step every 10 s,
+  and they stay capped at the cut point. It resumes as soon as power is back under the limit. While
+  the tuner is on, it alone controls power (the Nano 3s USB cap loop stands down).
 - No power reading: power-based steps hold, and the card says so.
 
 **Watching it.** The hashboard card shows how many chips are climbing / holding / stepped down, the
@@ -476,6 +526,11 @@ step on the Avalon Q), so give it time.
   fully online — only the "heater" goes off. (Asks to confirm.)
 - **Reboot Control Board** — a full reset of the K230D (both cores), ~60–90 s of downtime.
   Required for boot-time settings like Auto Power-On.
+- **Firmware updates** — shows the version you run and whether a newer TNA-OS Canaan version is
+  on the TNA web flasher, with its notes and a link to the flasher. **Check for updates** checks
+  now; it also checks every 6 hours while the page is open. When a newer version appears, the
+  dashboard pops it up once (Dismiss hides it until the next one). The check runs from your
+  browser, not the miner.
 - **Realtime Logs** — a live log stream you can filter by source (main, chain, controller, rx,
   stratum, psu, safety, api, config), flip to **Errors only**, text-filter, pause, and **capture +
   download** for support.
@@ -584,6 +639,6 @@ Every sat helps. ⚡
 
 ---
 
-**This build:** v0.4.2 — free, with a 2 % dev fee (4 % while a pool serves non-Bitcoin work).
+**This build:** v0.4.7 — free, with a 2 % dev fee (4 % while a pool serves non-Bitcoin work).
 
 **TNA-OS Canaan — your miner, your rules.**

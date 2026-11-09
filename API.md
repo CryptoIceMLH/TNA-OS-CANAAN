@@ -1,6 +1,6 @@
 # TNA-OS (Canaan Edition) — HTTP API Reference
 
-**Firmware:** v0.4.7 · **Updated:** 2026-11-01 · **Applies to:** Avalon Nano 3s + Avalon Q
+**Firmware:** v0.5.2 · **Updated:** 2026-11-09 · **Applies to:** Avalon Nano 3s + Avalon Q
 
 REST/JSON API for **every Canaan board running TNA-OS-CANAAN**. This is the integration
 contract for building monitoring dashboards, control panels, fleet managers, and automation
@@ -38,7 +38,8 @@ count or from which fields are non-zero.
 **The HTTP API is intentionally unauthenticated** — no token, no login — so any app on
 the LAN can monitor and control the miner (3rd-party dashboards, fleet tools, automation).
 Treat the API as fully open to everyone on the network: anyone who can reach the miner can
-read telemetry **and** change settings (pools, frequency, voltage, Wi‑Fi) and restart/reboot it.
+read telemetry **and** change settings (pools, frequency, voltage, Wi‑Fi), restart/reboot it, and
+start a firmware update (§3.10; only to a newer, free, official release for that board).
 
 ---
 
@@ -121,7 +122,7 @@ Returns one large JSON object. The fields apps typically use:
 #### Identity
 | Field | Type | Example | Notes |
 |---|---|---|---|
-| `version` | string | `"0.4.7"` | TNA-OS firmware version |
+| `version` | string | `"0.5.2"` | TNA-OS firmware version |
 | `ASICModel` | string | `"A3197S"` | Always A3197S on the Nano 3s |
 | `deviceModel` | string | `"Avalon Nano 3s"` | |
 | `asicCount` | int | `12` | Chips enumerated on the board. `0` while the hashboard is off (Power OFF / idle) |
@@ -714,6 +715,49 @@ Returns `{"ok":true,"msg":"credentials saved, rebooting"}` or `{"ok":false,"err"
 
 > **Setup flow:** a freshly-flashed/un-provisioned miner broadcasts AP `TNA-Setup` at
 > `192.168.4.1`. Connect, open the UI (or POST here), and it reboots onto your network.
+
+### 3.10 `POST /api/system/ota` and `GET /api/system/ota` — firmware update over the network
+Installs a newer TNA-OS Canaan release straight from the TNA web flasher. The miner fetches the
+image itself; only free releases can be installed this way.
+
+```bash
+curl -X POST http://<miner-ip>/api/system/ota \
+  -H "Content-Type: application/json" -d '{"version":"v0.5.3-Nano3s"}'
+```
+`version` is the release name exactly as the flasher lists it (`vX.Y.Z-Nano3s` or `vX.Y.Z-Q`).
+Response: `{"ok":true,"version":"v0.5.3-Nano3s"}` when the update has started, or
+`{"ok":false,"err":"..."}` (for example when an update is already running).
+
+Then poll `GET /api/system/ota` (about once a second):
+```json
+{ "state": "downloading", "version": "v0.5.3-Nano3s", "message": "Downloading v0.5.3-Nano3s",
+  "received": 12582912, "total": 45645824, "updated": 1794312000,
+  "current": "0.5.2", "board": "nano3s", "rootfsRev": 1 }
+```
+
+| `state` | Meaning |
+|---|---|
+| `idle` | No update since boot |
+| `checking` | Looking the release up on the flasher |
+| `downloading` | Downloading the image; `received` / `total` in bytes |
+| `verifying` | Comparing the image with this miner's flash |
+| `ready` | Verified; the miner is stopping hashing |
+| `writing` | Writing the app partition. **Do not power off** |
+| `rebooting` | Written; the miner is rebooting into the new version |
+| `error` | Not installed; `message` says why |
+
+What it checks before writing anything: the image header and partition checksums, that it is built
+for this board, that it is newer than the running version, and that the kernel, cpu1 system, boot
+loaders (same bytes as on this miner's flash) and root filesystem revision are unchanged. If any of
+those differ, it stops with `state: "error"` and a message that the release needs the USB flasher.
+Only the app partition (miner, cpu1 code, web UI) is rewritten; `/data` (settings, pools, WiFi, SSH
+keys, best difficulty, learned tune) is never touched.
+
+If the miner fails before writing (for example a busy mount), nothing is changed and the hashboard is
+left off: send Power ON to resume. A failure or power cut during `writing` needs the USB flasher.
+
+> Like every other endpoint this needs no login (see §0), so anyone on your network can start an
+> update, but only to a newer, free, official release for this board.
 
 ---
 

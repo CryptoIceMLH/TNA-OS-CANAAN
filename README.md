@@ -2,7 +2,7 @@
 
 ### The firmware your Avalon was supposed to ship with.
 
-**Version 0.4.7** · Avalon Nano 3s · Avalon Q · Free, with a 2 % dev fee
+**Version 0.5.2** · Avalon Nano 3s · Avalon Q · Free, with a 2 % dev fee
 
 ---
 
@@ -80,6 +80,15 @@ A clean REST/JSON API on the same address as the dashboard. A cgminer-compatible
 your existing tools just work. Home Assistant in three lines of YAML.
 And the whole thing runs **100% local** — pull the internet cable and it keeps right on
 mining and reporting.
+
+**Update in one click. No cable.**
+From 0.5.0 the miner updates itself: a newer release shows up on the System page, you press
+**Install**, and it downloads, checks and installs it, then reboots, in about two minutes. Your
+settings, pools and WiFi stay put. The USB flasher is still there for first installs and recovery.
+
+**Runs on your phone.**
+Every page is laid out for a phone too: a ☰ menu, cards sized to their content, one-column
+settings with full-size buttons. Check on the miner or change its pools from the sofa.
 
 ---
 
@@ -171,6 +180,10 @@ Then put the miner into flashing (BOOT) mode:
 > **Always flash the image that matches your board** — Nano 3s and Avalon Q are different
 > images.
 
+> **From 0.5.0 on, most updates don't need the cable:** System → Firmware updates → **Install**
+> downloads and installs a newer release over the network. You only need the USB flasher for the
+> first install of 0.5.0, for releases that say they need it, or to recover a miner.
+
 ### 2 · Find your miner
 
 - On first boot the miner pulls an IP address from your router automatically.
@@ -191,17 +204,31 @@ rest of this step.
 3. Enter your home WiFi name and password.
 4. The miner saves them and reboots onto your network. Done.
 
+**If your router isn't reachable at start-up** (for example after a power cut, when the miner boots
+faster than the router), the miner keeps your saved WiFi details and opens the `TNA-Setup` network
+as a fallback. Every 2 minutes it switches the setup network off for up to 30 seconds and tries your
+home network again; once it connects, it stays connected and the setup network stays off. It
+doesn't retry while a phone or laptop is connected to `TNA-Setup`, so you can still enter new
+details there (for example after changing your router password).
+
 ---
 
 ## Using the web interface
 
 The UI has three main pages: the **Dashboard** (live monitoring), **Settings** (all
-configuration), and **System** (power, reboot, live logs).
+configuration), and **System** (power, reboot, firmware updates, live logs). Army, Heat and
+Solar have their own pages too.
 
 Every page's card layout is **yours to arrange** — hit **✎ Edit layout** (top-left of the
 page), then drag a card by its header and resize it from the bottom-right corner. Your layout
 is saved in that browser, per machine; **↺ Reset** restores the default. Telemetry refreshes
 about every 1–3 seconds.
+
+**On a phone or small screen** (below about 1100 px wide) the top bar shows the page name and a
+**☰** button; tap it for every page plus the host name, model, uptime, network and theme.
+On a phone the dashboard cards stack in one column, each as tall as its content, and Settings is a
+single column with each label above its field. **Edit layout** is hidden on phones; arrange the
+cards on a computer.
 
 ---
 
@@ -244,8 +271,12 @@ difficulty, **you've found a block.**
 
 ### Bitcoin Network
 Live network stats — block height, difficulty, estimated network hashrate — from a public
-source (not your pool - on the to do to allow user to point it to their own mempool instance). Click the rows to toggle between sats/min ↔ solo-block odds and fiat ↔
-BTC views.
+source (not your pool - on the to do to allow user to point it to their own mempool instance).
+Two tabs: **Solo** shows your odds of finding a whole block at the current hashrate, plus the fiat
+printed while the miner has been up; **Pool** shows sats earned per minute and the sats mined since
+the miner started. Both are estimates from your current hashrate and the network hashrate. The
+uptime and totals count from when the **miner** started, so refreshing the page no longer resets
+them.
 
 ### Hash Rate Chart
 Your hashrate over time with selectable **1m / 10m / 1h / 1d** traces plus **temperature** and
@@ -529,8 +560,15 @@ step on the Avalon Q), so give it time.
 - **Firmware updates** — shows the version you run and whether a newer TNA-OS Canaan version is
   on the TNA web flasher, with its notes and a link to the flasher. **Check for updates** checks
   now; it also checks every 6 hours while the page is open. When a newer version appears, the
-  dashboard pops it up once (Dismiss hides it until the next one). The check runs from your
-  browser, not the miner.
+  dashboard pops it up once with a **Go to update page** button that brings you here (Dismiss hides
+  it until the next one). The check runs from your browser, not the miner.
+- **Install** (next to each newer release, from 0.5.0) — updates the miner over the network, no USB
+  cable. The miner downloads the release from the TNA flasher itself, checks it (checksums, right
+  board, newer version), stops hashing, installs it and reboots, about 2 minutes in all. The card
+  shows the progress. Your settings, pools, WiFi and SSH keys are kept. **Don't power the miner off
+  while it says Installing**: a power cut during the ~20 s write means re-flashing over USB. Only
+  free releases can be installed this way, and a release that changes the kernel, boot loader or root
+  filesystem is refused with a message to use the USB flasher instead.
 - **Realtime Logs** — a live log stream you can filter by source (main, chain, controller, rx,
   stratum, psu, safety, api, config), flip to **Errors only**, text-filter, pause, and **capture +
   download** for support.
@@ -578,7 +616,8 @@ That's powerful, and it means:
 - ✅ **Run TNA-OS on a trusted home network.**
 - ⛔ **Never expose the miner straight to the internet.** For remote access, use your own VPN
   or firewall.
-- Anyone who can reach the miner on your LAN can read its telemetry and change its settings.
+- Anyone who can reach the miner on your LAN can read its telemetry and change its settings,
+  and start a firmware update (only to a newer, free, official release for that board).
 
 Your pool credentials live on the miner and are **never** returned by the API or written to the logs.
 
@@ -591,6 +630,9 @@ Your pool credentials live on the miner and are **never** returned by the API or
 | Can't find the miner | Check your router's device list, or read the IP off the OLED. |
 | Dashboard won't load | Confirm the IP, then hard-refresh the browser (clear site data). |
 | No WiFi yet | Join the `TNA-Setup` network and provision it (see Getting Started). |
+| Update says it needs the USB flasher | That release changes the kernel, boot loader or root filesystem, which can't be written over the network. Flash it with the [TNA Flasher](https://lnbits.molonlabe.holdings/tnaflasher/public). |
+| Update failed while Installing / miner won't come back after an update | Re-flash with the USB flasher (BOOT mode, see Getting Started). This only happens if the write was interrupted, e.g. a power cut. |
+| Settings gone after updating to 0.5.1 | A bug in 0.5.1's first start; fixed in 0.5.2. Enter them once more; they now survive updates. |
 | Low hashrate right after Power ON | Normal — give it a few seconds; voltage and frequency ramp up from a safe floor. |
 | Shares getting rejected | Usually a pool account / worker-name issue — double-check your worker with the pool. |
 | Dev fee shows 4 % / "Shitcoin detected" | A connected pool is serving non-Bitcoin work. Point it at a Bitcoin pool and the fee returns to 2 %. |
@@ -639,6 +681,6 @@ Every sat helps. ⚡
 
 ---
 
-**This build:** v0.4.7 — free, with a 2 % dev fee (4 % while a pool serves non-Bitcoin work).
+**This build:** v0.5.2 — free, with a 2 % dev fee (4 % while a pool serves non-Bitcoin work).
 
 **TNA-OS Canaan — your miner, your rules.**

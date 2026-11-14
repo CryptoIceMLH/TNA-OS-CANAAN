@@ -2,7 +2,7 @@
 
 ### The firmware your Avalon was supposed to ship with.
 
-**Version 0.5.2** · Avalon Nano 3s · Avalon Q · Free, with a 2 % dev fee
+**Version 0.5.7** · Avalon Nano 3s · Avalon Q · Free, with a 2 % dev fee
 
 ---
 
@@ -122,7 +122,8 @@ work exactly as before, and idle time costs nothing.
 - **Solo miners:** a block found during a dev-fee turn belongs to the developer's pool. That
   is 2 % of your mining time, so 2 % of your block chances.
 - **One anonymous worker per miner.** Each miner shows on the developer's pool as its own
-  worker (`devfee` + `q`/`3s` + a random 6-character ID). The ID is made once from random data
+  worker: `df` + `3s`/`q` + the firmware version without dots + a random 6-character ID (for
+  example `df3s056o47umf` on 0.5.6). The ID is made once from random data
   (nothing from your hardware, network or wallet) and is kept across firmware updates, so the
   developer can see how many miners run TNA-OS and nothing about who owns them.
 - **Backup pool.** If the developer's main pool (ViaBTC) can't be reached, the fee switches to a
@@ -216,8 +217,8 @@ details there (for example after changing your router password).
 ## Using the web interface
 
 The UI has three main pages: the **Dashboard** (live monitoring), **Settings** (all
-configuration), and **System** (power, reboot, firmware updates, live logs). Army, Heat and
-Solar have their own pages too.
+configuration), and **System** (power, reboot, firmware updates, live logs). Heat and Solar
+have their own pages too.
 
 Every page's card layout is **yours to arrange** — hit **✎ Edit layout** (top-left of the
 page), then drag a card by its header and resize it from the bottom-right corner. Your layout
@@ -299,6 +300,9 @@ Each hashboard is drawn as a grid of chips.
   - **Nano 3s:** measured power and efficiency in **J/TH** (lower is better), plus GH/W. In PSU
     bypass the title shows **POWER • BYPASS** and the bypass voltage; on USB-C it shows the PD
     contract (volts, amps) and your USB power limit.
+  - J/TH is shown twice, `1m … · 10m … J/TH`: live power divided by the 1-minute hashrate (reacts
+    fast, jumps around more) and by the 10-minute hashrate (steady, slow after a change). For the
+    first 10 minutes after a start the 10-minute figure includes the ramp, so it reads high.
 - **Chip display dropdown** (per board): choose what every chip cell shows — **Health**,
   **Hashrate**, **Temp °C**, **Freq MHz**, **Fail %** (Smart Speed self-check fail rate),
   **HW errors**, or **Chip ID**.
@@ -308,7 +312,6 @@ Each hashboard is drawn as a grid of chips.
 - **Per-board controls:**
   - **↻ Reset** — a 200 ms reset pulse to that board; chips re-init and mining restarts (asks to
     confirm first).
-  - **Enabled / Disabled** 🧪— Disabled holds the board in reset until you re-enable it.
   - **Freq override**🧪 — run this board at its own frequency (slider 200–600 MHz) instead of
     following the global setting.
   - **✓ Apply / Cancel** — board controls *stage* your change; Apply pushes it to hardware.
@@ -392,12 +395,12 @@ down to a minimum of 2). Each pool has:
 Extras: **Enable Extranonce Subscribe** (V1 pools push fresh work without reconnecting) and
 **Stratum TCP Keepalive** (heartbeat for pools that drop idle clients — safe to leave on).
 
-**How pools take turns.** One pool mines the whole machine at a time, for 30 seconds, then the
-next pool is picked by quota. Over time each pool gets exactly its share, but a pool with a small
-quota gets turns less often: a 2 % pool gets one 30 s turn about every 25 minutes. Shares found
-during a turn always go to the pool that sent that work, so switching costs nothing. The dev fee
-takes part in this same rotation (see [Free, with a 2 % dev fee](#free-with-a-2--dev-fee)): its
-first turn comes about 12–13 minutes after your pool connects, then about every 25 minutes.
+**How pools take turns.** All pools stay connected at once. Each time the chips take new work
+(about every 0.37 s), the next pool is picked by quota, so every pool mines continuously in short
+slices and its share shows up steadily on the pool side. Shares always go to the pool that sent
+that work. The dev fee takes part in the same picking (see
+[Free, with a 2 % dev fee](#free-with-a-2--dev-fee)): about one slice in every 50, so it gets
+about 1.2 s of every minute.
 
 **What happens when a pool goes down.** In **multipool**, that pool's quota is **redistributed to
 the survivors** automatically — the per-pool card shows the *effective* quota next to your
@@ -405,11 +408,12 @@ the survivors** automatically — the per-pool card shows the *effective* quota 
 returns to the primary when it recovers. A dead pool shows a grace-period alert, then
 "not connected".
 
-**When every pool is down (energy save).** If none of your pools has been reachable for 2 minutes
-(for example the internet or WiFi dropped), the miner drops every chip to the board's lowest
-frequency so it stops burning full power on work nobody can receive. The hashboard stays powered
-and the pools keep retrying; the moment one connects again, your frequency, per-chip settings and
-the autotuner come straight back. Nothing restarts, so there is no re-initialisation of the chips.
+**When every pool is down: mining stops.** If none of your pools has been reachable for 2 minutes
+(for example the internet or WiFi dropped), the miner stops hashing: the chips are held in reset, so
+power drops to idle, and the dashboard shows "No pool reachable. Mining stopped". The hashboard rail
+stays on and the pools keep retrying; the moment one connects again, the chips are re-enumerated and
+mining resumes at your frequency, voltage and per-chip settings. The dev pool does not count here:
+if only the dev pool is unreachable you keep mining (its 2 % slice is lost).
 
 > A worker the pool doesn't recognise shows up as rejects — that's an account / worker-name issue
 > with the pool, not the miner.
@@ -442,7 +446,7 @@ This is the per-board **thermal ladder** in Normal mode — each a °C value (40
 |---|---|---|
 | **Warn** | 75 °C | Fans forced to **100%** and a warning is logged. |
 | **Hot** | 80 °C | That board's frequency is cut **−25 MHz**. |
-| **Danger / Reset** | 85 °C | That board is **reset and held in reset until you re-enable it** — other boards keep mining. |
+| **Danger / Reset** | 85 °C | The chips are **held in reset and the hashboard power is cut** (the same as Power OFF). Press **Power ON** once it has cooled. |
 
 Plus:
 - **Immersion offset** (default **+15 °C**) — added to all three thresholds when immersion mode
@@ -482,7 +486,17 @@ Difficulty** (default 10000). Leave these alone unless you know why you're chang
 
 **Display & lights**
 - **Display (OLED/LCD)** — Screen On/off, brightness (40–255), push a text **message to the
-  screen**, and **rotate 90°**.
+  screen**, and **rotate 90°**. **Screen On off is night mode:** it is saved, survives reboots,
+  skips the boot splash, and on the Nano 3s also switches the backlight off.
+- **Sounds (Nano 3s)** — the buzzer plays on boot (Morse "BTC"), pool lost / restored, network
+  lost, thermal Warn / Hot / Danger, fan stalled, board fault, block found and air filter due.
+  One switch per sound plus a ▶ test button, all on by default; **Silence** quiets the alarms
+  sounding now until their problem clears. In night mode only Danger, Fan stalled and Find Me
+  sound. The Avalon Q has no buzzer.
+- **Find Me** — flashes the screen and LED bar (and beeps on the Nano 3s) for 60 s so you can spot
+  this miner on a shelf. Works with the screen off.
+- **Air Filter** — mining minutes since the filter was last cleaned; 120,000 minutes = 100 %
+  (the stock scale). Clean the filter, then press reset (available from 50 %).
 - **LED Bar (ARGB)** — by default the LED follows the thermal zone (green → yellow → orange →
   red). Tick **Override** to set a fixed colour instead; the brightness slider (0–255) applies
   either way — so you can keep the thermal colours but dim them. **DANGER red is always full
@@ -493,7 +507,8 @@ Difficulty** (default 10000). Leave these alone unless you know why you're chang
 ## 🧪 Autotuner (WIP)
 
 The Autotuner finds the best clock for **every chip separately**, and keeps tuning while the miner
-runs; it doesn't calibrate once and stop. Turn it on in the **Autotuner** card on Settings.
+runs; it doesn't calibrate once and stop. Turn it on in the **Autotuner** card on Settings (the
+card starts folded; click its title to open it).
 While it is a work in progress it is **locked**: enter the unlock code next to the switch first.
 The lock comes back after every reboot, and the tuner is always off after a reboot. Every
 field there has its own help text, plus "How it works" and "What protects the miner" sections.
@@ -636,7 +651,7 @@ Your pool credentials live on the miner and are **never** returned by the API or
 | Low hashrate right after Power ON | Normal — give it a few seconds; voltage and frequency ramp up from a safe floor. |
 | Shares getting rejected | Usually a pool account / worker-name issue — double-check your worker with the pool. |
 | Dev fee shows 4 % / "Shitcoin detected" | A connected pool is serving non-Bitcoin work. Point it at a Bitcoin pool and the fee returns to 2 %. |
-| Running hot | Fans go to 100% automatically; check airflow and ambient temp. Danger temp holds the board in reset until it cools. |
+| Running hot | Fans go to 100% automatically; check airflow and ambient temp. A Danger trip holds the chips in reset and cuts the hashboard power; press Power ON once it has cooled. |
 
 ---
 
@@ -681,6 +696,6 @@ Every sat helps. ⚡
 
 ---
 
-**This build:** v0.5.2 — free, with a 2 % dev fee (4 % while a pool serves non-Bitcoin work).
+**This build:** v0.5.7 — free, with a 2 % dev fee (4 % while a pool serves non-Bitcoin work).
 
 **TNA-OS Canaan — your miner, your rules.**

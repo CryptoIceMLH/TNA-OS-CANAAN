@@ -1,6 +1,6 @@
 # TNA-OS (Canaan Edition) — HTTP API Reference
 
-**Firmware:** v0.5.2 · **Updated:** 2026-11-09 · **Applies to:** Avalon Nano 3s + Avalon Q
+**Firmware:** v0.5.7 · **Updated:** 2026-11-14 · **Applies to:** Avalon Nano 3s + Avalon Q
 
 REST/JSON API for **every Canaan board running TNA-OS-CANAAN**. This is the integration
 contract for building monitoring dashboards, control panels, fleet managers, and automation
@@ -122,7 +122,7 @@ Returns one large JSON object. The fields apps typically use:
 #### Identity
 | Field | Type | Example | Notes |
 |---|---|---|---|
-| `version` | string | `"0.5.2"` | TNA-OS firmware version |
+| `version` | string | `"0.5.7"` | TNA-OS firmware version |
 | `ASICModel` | string | `"A3197S"` | Always A3197S on the Nano 3s |
 | `deviceModel` | string | `"Avalon Nano 3s"` | |
 | `asicCount` | int | `12` | Chips enumerated on the board. `0` while the hashboard is off (Power OFF / idle) |
@@ -305,6 +305,7 @@ TNA-OS is free with a 2 % dev fee: the developer's pool takes part in the normal
 | `devFeeState` | string | | `idle` (hashboard off) · `connecting` · `mining` · `blocked` (the dev pool cannot be reached; dev-fee turns still happen and that work is lost) |
 | `devFeeHashrate` | number | GH/s | Average hashrate credited to the dev fee since start |
 | `devFeeShares` | object | | `{ accepted, rejected }` at the dev pool |
+| `noPoolStop` | bool | | `true` while mining is stopped because none of your pools has been reachable for 2 minutes (chips held in reset); `false` again once a pool is back and the chips are re-enumerated. The dev pool does not count. |
 
 The dev fee is not part of `stratum.pools`, is not a pool slot, and is not listed by the cgminer `pools` command.
 
@@ -331,7 +332,7 @@ Voltage: once every chip holds and every chip has completed a Smart Speed window
 
 Learned tune: when the voltage search settles and the chips have settled at that voltage, every chip's clock, the voltage and (with `ladder`) each chip's top-clock offset are saved to `/data/tna-os/tuner_profile.json`. The next time the tuner starts with the same `frequency` and `goal` and the same chip count, it starts from that tune with chips holding instead of searching from scratch.
 
-Energy save (not part of the tuner): when no pool has been reachable for 2 minutes, every chip is lowered to the board's minimum frequency with the hashboard still powered; per-chip pins, the tuner and the Nano 3s USB-C cap loop pause. When a pool connects, the previous frequency and pins are restored with no re-initialisation.
+No-pool stop (not part of the tuner): when none of your pools has been reachable for 2 minutes, mining stops: the chips are held in reset with the hashboard rail still on, `noPoolStop` is `true`, and the tuner and the Nano 3s USB-C cap loop pause. When a pool connects, the chips are re-enumerated and mining resumes at your settings.
 
 #### Pools — `stratum` object
 Supports **up to 8 pools**, **V1 (stratum+tcp) and V2 (Stratum V2 / `sv2://`) mixed**,
@@ -640,7 +641,8 @@ Per-board control. Board id is **0** (the only board).
 # Re-enumerate the board (200 ms reset pulse, re-inits all 12 chips)
 curl -X POST http://<miner-ip>/api/board/0/reset
 
-# Disable (hold in reset) / enable (release)
+# Disable: stop hashing, chips held in reset (rail stays on) / enable: re-enumerate and mine.
+# No UI control since 0.5.6; the miner itself uses this when every pool is down.
 curl -X POST http://<miner-ip>/api/board/0/enable \
   -H "Content-Type: application/json" -d '{"enabled": false}'
 
@@ -758,6 +760,59 @@ left off: send Power ON to resume. A failure or power cut during `writing` needs
 
 > Like every other endpoint this needs no login (see §0), so anyone on your network can start an
 > update, but only to a newer, free, official release for this board.
+
+### 3.11 Air filter counter — `POST /api/system/filter/reset`
+The miner counts the minutes it has spent mining (hashboard on and hashing) since the air filter was
+last cleaned. **120,000 minutes = 100 %**, the same scale as the stock firmware. The count is kept
+in `/data`, survives reboots and updates, and is saved every 10 minutes.
+
+`GET /api/system/info` fields:
+
+| Field | Type | Meaning |
+|---|---|---|
+| `filterMinutes` | int | Mining minutes since the last reset |
+| `filterPercent` | float | `filterMinutes` ÷ 120,000 × 100, one decimal; can pass 100 |
+| `filterFullMinutes` | int | `120000` |
+| `filterResetAllowed` | bool | `true` from 50 % |
+
+Reset after cleaning the filter (works from 50 %, like stock):
+```bash
+curl -X POST http://<miner-ip>/api/system/filter/reset
+```
+Response: `{"ok":true,"filterMinutes":0,"filterPercent":0.0}`, or below 50 %
+`{"ok":false,"err":"filter reset is available from 50 % (now 12.3 %)"}`.
+
+### 3.12 Find Me — `POST /api/system/locate`
+Flashes the screen ("FIND ME") and the LED bar for 60 s, and on the Nano 3s also beeps. It works
+with the screen turned off. Body `{"on":true}` starts it, `{"on":false}` stops it early.
+Response: `{"ok":true,"locateActive":true,"locateSeconds":60}`.
+`GET /api/system/info` shows `locateActive` and `locateSecondsLeft`.
+
+### 3.13 Sounds (Nano 3s) — `POST /api/sound/test`, `POST /api/sound/silence`
+The Nano 3s has a buzzer; the Avalon Q has none (`soundAvailable: false`, nothing plays).
+`GET /api/system/info` returns `soundAvailable` and `sound`, the saved settings (all `true` by
+default):
+
+| Key | Plays when |
+|---|---|
+| `enabled` | Master switch for everything below (Find Me always sounds) |
+| `boot` | Hashing starts after boot (Morse "BTC") |
+| `poolLost` | No pool for 60 s, then every 5 min |
+| `poolRestored` | A pool comes back after `poolLost` played |
+| `netLost` | No IP address for 30 s, then every 5 min |
+| `warn` | Entering the Warn thermal zone |
+| `hot` | In the Hot zone, every 30 s |
+| `danger` | In the Danger zone, continuously |
+| `fanStall` | Fan at 0 RPM for 10 s while driven, then every 30 s |
+| `boardFault` | The hashboard goes to `failed` |
+| `blockFound` | A share beats the network difficulty |
+| `filterFull` | Air filter counter at 100 %, once a day |
+
+With the screen off (`oledEnabled: false`, night mode) only `danger`, `fanStall` and Find Me sound.
+
+Change settings with `PATCH /api/system` and `{"sound":{"hot":false}}` (only the keys you send
+change). Play one sound: `POST /api/sound/test` with `{"sound":"warn"}` (any key above, or
+`findMe`). Quiet the alarms sounding now until their problem clears: `POST /api/sound/silence`.
 
 ---
 
@@ -929,7 +984,7 @@ connection. Persisted in `[miner] stratum_keepalive`.
 | Normal | < warn | — |
 | Warn | ≥ 80 °C | Fans → 100 % |
 | Hot | ≥ 85 °C | Fans 100 % + step frequency down |
-| Danger | ≥ 90 °C | Board held in reset until re-enabled |
+| Danger | ≥ 90 °C | Chips held in reset and hashboard power cut (as Power OFF); `powerState` goes to `idle`. Press Power ON once cooled. |
 
 Hysteresis applies before exiting a zone. **Immersion mode** raises thresholds and
 remaps fans to pump+radiator. **BDOC mode** disables the warn/hot ladder (single
